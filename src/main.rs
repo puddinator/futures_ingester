@@ -5,7 +5,8 @@ use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use futures_util::{StreamExt, SinkExt};
 
 const KUCOIN_ENDPOINT: &str = "wss://ws-api-spot.kucoin.com/";
-const PING_DURATION: u64 = 10;
+const PING_DURATION: u64 = 10
+;
 
 // fetch WebSocket token
 async fn get_kucoin_ws_token() -> Result<String, Box<dyn std::error::Error>> { // return different error types dynamically on the heap
