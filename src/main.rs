@@ -1,11 +1,13 @@
 use reqwest::Client;
 use serde_json::Value;
-use tungstenite::Message;
+use tokio::time::{sleep, Duration};
+use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use futures_util::{StreamExt, SinkExt};
 
 const KUCOIN_ENDPOINT: &str = "wss://ws-api-spot.kucoin.com/";
+const PING_DURATION: u64 = 10;
 
-/// Fetch WebSocket token
+// fetch WebSocket token
 async fn get_kucoin_ws_token() -> Result<String, Box<dyn std::error::Error>> { // return different error types dynamically on the heap
     let client = Client::new();
     let url = "https://api.kucoin.com/api/v1/bullet-public";
@@ -24,18 +26,16 @@ async fn get_kucoin_ws_token() -> Result<String, Box<dyn std::error::Error>> { /
     Ok(token)
 }
 
-/// Connect to KuCoin WebSocket and subscribe
+// connect to KuCoin WebSocket and subscribe
 async fn kucoin_connection(token: String) -> Result<(), Box<dyn std::error::Error>> { 
     let ws_url = format!("{}?token={}", KUCOIN_ENDPOINT, token);
 
-    let (ws_stream, _) = tokio_tungstenite::connect_async(ws_url).await.expect("WebSocket connection failed");
+    let (ws_stream, _) = connect_async(ws_url).await.expect("WebSocket connection failed");
     println!("Connected to KuCoin WebSocket!");
-
     let (mut write, mut read) = ws_stream.split();
 
     let subscribe_msg = r#"
     {
-      "id": 1545910660739,
       "type": "subscribe",
       "topic": "/contractMarket/level2:ETHUSDTM",
       "privateChannel": false,
@@ -43,6 +43,20 @@ async fn kucoin_connection(token: String) -> Result<(), Box<dyn std::error::Erro
     }"#;
 
     write.send(Message::Text(subscribe_msg.to_string().into())).await?;
+
+    // spawn pinger
+    tokio::spawn(async move {
+        loop {
+            sleep(Duration::from_secs(PING_DURATION)).await;
+            let ping_msg = r#"{"id": "123456789:)", "type": "ping"}"#;
+            if let Err(e) = write.send(Message::Text(ping_msg.into())).await {
+                eprintln!("Failed to send ping: {}", e);
+                break;
+            } else {
+                println!("Sent ping message.");
+            }
+        }
+    });
 
     while let Some(message) = read.next().await {
         match message {
