@@ -13,6 +13,7 @@ pub struct OrderBook {
 }
 
 impl OrderBook {
+    // create order book
     pub fn new() -> Self {
         Self {
             bids: BTreeMap::new(),
@@ -20,6 +21,7 @@ impl OrderBook {
         }
     }
 
+    // takes in raw string message from kucoin websocket and processes it for the three fields
     pub fn process_message(&mut self, message: &str) {
         let parsed: Value = match serde_json::from_str(message) {
             Ok(json) => json,
@@ -47,7 +49,7 @@ impl OrderBook {
         }
     }
 
-    // ingest message into order book
+    // ingest update into order book
     fn ingest(&mut self, price: f64, side: Side, quantity: i64) {
         let price_key = OrderedFloat(price); // to be used as map key
 
@@ -63,14 +65,15 @@ impl OrderBook {
         }
     }
 
+    // prints out 5 best in order book
     pub fn print(&self) {
-        println!("\n================================================");
+        println!("\n=====================================================");
         println!("{: <10} {: <10}   |   {: <10} {: <10}", "Bid Price", "Qty", "Ask Price", "Qty");
     
         let mut bid_it = self.bids.iter().rev();
         let mut ask_it = self.asks.iter();
     
-        for _ in 0..10 {
+        for _ in 0..5 {
             let bid = bid_it.next();
             let ask = ask_it.next();
     
@@ -89,6 +92,6 @@ impl OrderBook {
             }
         }
     
-        println!("================================================\n");
+        println!("=====================================================\n");
     }
 }
